@@ -8,6 +8,9 @@
 <!-- The page may only talk to GitHub's API (for the snapshot) and Google Fonts. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://api.github.com; img-src data:; base-uri 'none'; form-action 'none'">
 <title>HYROX Prep Dashboard</title>
+<script>/* Dark unless this browser has chosen light. */
+try { document.documentElement.dataset.theme = localStorage.getItem("hyroxTheme") === "light" ? "light" : "dark"; } catch { document.documentElement.dataset.theme = "dark"; }
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600&display=swap">
 <style>
@@ -202,7 +205,7 @@ button[disabled] { opacity: .55; cursor: default; }
   </nav>
 
   <main id="view"></main>
-  <footer>Read-only copy of the HYROX Prep app. The numbers come from your private GitHub repo and are kept in this browser; this page contains no data of its own.</footer>
+  <footer>Read-only copy of the HYROX Prep app. The numbers come from your private GitHub repo and are kept in this browser; this page contains no data of its own. <button class="ghost" id="themeBtn" style="margin-left:8px;padding:3px 10px;font-size:12px"></button></footer>
 </div>
 
 <script>
@@ -682,6 +685,12 @@ function sample() {
     progress: { referenceHR: 162, efficiencyWeekly: effW, efficiencyRuns: effRuns, weeklyHours: hours, minutesByType: mix },
   };
 }
+
+// ---------- theme (dark by default) ----------
+function paintTheme() { $("#themeBtn").textContent = document.documentElement.dataset.theme === "light" ? "Dark mode" : "Light mode"; }
+$("#themeBtn").addEventListener("click", () => { const t = document.documentElement.dataset.theme === "light" ? "dark" : "light";
+  document.documentElement.dataset.theme = t; try { localStorage.setItem("hyroxTheme", t); } catch {} paintTheme(); });
+paintTheme();
 
 // ---------- start ----------
 let saved = null; try { saved = localStorage.getItem(STORE); } catch {}
