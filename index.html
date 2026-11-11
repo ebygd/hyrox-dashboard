@@ -1,0 +1,694 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<!-- The page may only talk to GitHub's API (for the snapshot) and Google Fonts. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://api.github.com; img-src data:; base-uri 'none'; form-action 'none'">
+<title>HYROX Prep Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: race-bib header (countdown + week bar), tab strip, then a two-column card grid that stacks on phones. */
+:root {
+  --bg: #f3f3ef;
+  --surface: #ffffff;
+  --surface-2: #ebebe5;
+  --fg: #16170f;
+  --muted: #5f6152;
+  --line: #d9d9cf;
+  --accent: #ffd600;          /* HYROX yellow, the app's accent; used as a fill */
+  --accent-ink: #7a6500;      /* yellow readable as text on light */
+  --on-accent: #16170f;
+  --good: #1f8a4c; --warn: #b86e00; --bad: #c62f2f;
+  --z1: #9a9c90; --z2: #2f6fd6; --z3: #1f9a55; --z4: #e08a00; --z5: #d33a3a;
+  --k-run: #2f6fd6; --k-strength: #6b5ce0; --k-cond: #e08a00; --k-row: #1aa0a0; --k-bike: #c04fa0; --k-other: #9a9c90;
+  --s-deep: #2c3e9e; --s-rem: #6f8ff0; --s-light: #b9c6f5; --s-awake: #e6b8b8;
+  --font-display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f100c; --surface: #1a1b16; --surface-2: #24251e; --fg: #f1f1e8; --muted: #a3a594; --line: #33352b;
+  --accent: #ffd600; --accent-ink: #ffd600; --on-accent: #16170f;
+  --good: #4cc47e; --warn: #f0a43a; --bad: #ff6b6b;
+  --z1: #8a8c80; --z2: #5b93f0; --z3: #45c47a; --z4: #f3a33a; --z5: #ff6464;
+  --k-run: #5b93f0; --k-strength: #9487f5; --k-cond: #f3a33a; --k-row: #38c4c4; --k-bike: #e27cc4; --k-other: #8a8c80;
+  --s-deep: #4a5fd0; --s-rem: #8aa4ff; --s-light: #3d4a80; --s-awake: #a86a6a;
+  color-scheme: dark;
+}}
+:root[data-theme="dark"] {
+  --bg: #0f100c; --surface: #1a1b16; --surface-2: #24251e; --fg: #f1f1e8; --muted: #a3a594; --line: #33352b;
+  --accent: #ffd600; --accent-ink: #ffd600; --on-accent: #16170f;
+  --good: #4cc47e; --warn: #f0a43a; --bad: #ff6b6b;
+  --z1: #8a8c80; --z2: #5b93f0; --z3: #45c47a; --z4: #f3a33a; --z5: #ff6464;
+  --k-run: #5b93f0; --k-strength: #9487f5; --k-cond: #f3a33a; --k-row: #38c4c4; --k-bike: #e27cc4; --k-other: #8a8c80;
+  --s-deep: #4a5fd0; --s-rem: #8aa4ff; --s-light: #3d4a80; --s-awake: #a86a6a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 14px; line-height: 1.45; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 20px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; letter-spacing: .01em; }
+h2 { font-size: 20px; font-weight: 700; text-transform: uppercase; }
+h3 { font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+small, .small { font-size: 12px; }
+
+/* Header */
+.hero { display: grid; grid-template-columns: 1fr auto; gap: 16px 24px; align-items: end; }
+.eyebrow { font-family: var(--font-display); font-weight: 800; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.hero h1 { font-size: clamp(28px, 5vw, 44px); font-weight: 800; text-transform: uppercase; line-height: 1; margin-top: 4px; }
+.status { margin-top: 6px; color: var(--muted); }
+.count { text-align: right; }
+.count b { display: block; font-family: var(--font-display); font-weight: 800; font-size: clamp(56px, 10vw, 88px); line-height: .9;
+  background: var(--accent); color: var(--on-accent); padding: 4px 14px 2px; border-radius: 6px; }
+.count span { font-size: 12px; color: var(--muted); }
+.weekbar { grid-column: 1 / -1; }
+.weeks { display: flex; gap: 2px; }
+.weeks i { flex: 1; height: 8px; border-radius: 2px; background: var(--surface-2); }
+.weeks i.done { background: var(--accent); }
+.weeks i.now { background: transparent; box-shadow: inset 0 0 0 1.5px var(--accent); }
+.phases { display: flex; gap: 2px; margin-top: 5px; }
+.phases span { font-family: var(--font-display); font-weight: 700; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); white-space: nowrap; overflow: hidden; }
+.phases span.cur { color: var(--accent-ink); }
+
+.source { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin-top: 18px; padding: 10px 12px;
+  border: 1px dashed var(--line); border-radius: var(--r); }
+.source.drag { border-color: var(--accent-ink); background: var(--surface); }
+.source p { margin: 0; flex: 1 1 260px; min-width: 0; }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 99px; background: var(--surface-2); color: var(--fg); white-space: nowrap; }
+.pill.ex { background: var(--accent); color: var(--on-accent); }
+.pill.good { color: var(--good); } .pill.warn { color: var(--warn); } .pill.bad { color: var(--bad); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: currentColor; }
+button, .btn { font: inherit; font-weight: 600; font-size: 13px; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--fg);
+  background: var(--fg); color: var(--bg); cursor: pointer; }
+button.ghost { background: transparent; color: var(--fg); border-color: var(--line); }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
+
+/* Tabs */
+nav.tabs { display: flex; gap: 4px; margin: 22px 0 16px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+nav.tabs a { font-family: var(--font-display); font-weight: 700; font-size: 16px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted);
+  text-decoration: none; padding: 8px 12px 9px; border-bottom: 3px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+nav.tabs a.on { color: var(--fg); border-bottom-color: var(--accent); }
+
+/* Cards */
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.grid .wide { grid-column: 1 / -1; }
+@media (max-width: 760px) { .grid { grid-template-columns: minmax(0, 1fr); } .hero { grid-template-columns: 1fr; } .count { text-align: left; } .count b { display: inline-block; } }
+.card { background: var(--surface); border-radius: var(--r); padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.card.lead { box-shadow: inset 4px 0 0 var(--accent); }
+.row { display: flex; flex-wrap: wrap; gap: 10px; }
+.tile { flex: 1 1 100px; min-width: 0; background: var(--surface-2); border-radius: 8px; padding: 9px 11px; }
+.tile .k { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.tile .v { font-family: var(--font-display); font-weight: 700; font-size: 26px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.tile .d { font-size: 12px; color: var(--muted); }
+.reasons { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; color: var(--muted); }
+.warnings { display: flex; flex-direction: column; gap: 6px; }
+.warning { color: var(--warn); font-weight: 500; }
+.warning.bad { color: var(--bad); }
+.sug-name { font-family: var(--font-display); font-weight: 800; font-size: 30px; line-height: 1; text-transform: uppercase; }
+.plan-item { display: flex; gap: 10px; align-items: baseline; justify-content: space-between; padding: 6px 0; border-top: 1px solid var(--line); }
+.plan-item:first-child { border-top: 0; }
+.chk { font-weight: 700; }
+.chk.yes { color: var(--good); } .chk.no { color: var(--muted); }
+.empty { color: var(--muted); padding: 12px; background: var(--surface-2); border-radius: 8px; }
+
+/* Zones bar */
+.zbar { display: flex; height: 26px; border-radius: 6px; overflow: hidden; }
+.zbar div { display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; min-width: 0; }
+.ztable { width: 100%; border-collapse: collapse; }
+.ztable td { padding: 4px 6px; border-top: 1px solid var(--line); }
+
+/* Gauge */
+.gauge { position: relative; height: 10px; border-radius: 5px; overflow: hidden; display: flex; }
+.gauge span { height: 100%; }
+.gauge-marker { position: relative; height: 14px; }
+.gauge-marker b { position: absolute; top: 0; width: 3px; height: 14px; background: var(--fg); border-radius: 2px; transform: translateX(-1px); }
+
+/* Tables */
+.tscroll { overflow-x: auto; }
+table.list { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+table.list th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.list td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.list td.r, table.list th.r { text-align: right; white-space: nowrap; }
+.note { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.kind { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.zchip { display: inline-block; min-width: 24px; text-align: center; font-size: 11px; font-weight: 700; color: #fff; border-radius: 4px; padding: 1px 4px; }
+.filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.filters button { padding: 4px 11px; font-size: 12px; background: transparent; color: var(--fg); border-color: var(--line); }
+.filters button.on { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+
+/* Plan weeks */
+.week h3 { margin-bottom: 6px; }
+.days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+@media (max-width: 760px) { .days { grid-template-columns: minmax(0, 1fr); } }
+.day { background: var(--surface); border-radius: 8px; padding: 8px; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.day.today { box-shadow: inset 0 0 0 2px var(--accent); }
+.day .dl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.ps { font-size: 12px; padding: 4px 6px; border-radius: 5px; background: var(--surface-2); overflow-wrap: anywhere; }
+.ps.done { background: color-mix(in srgb, var(--good) 18%, var(--surface)); }
+.ps.missed { opacity: .65; text-decoration: line-through; }
+.ps.hard { box-shadow: inset 3px 0 0 var(--z4); }
+.ps.extra { background: transparent; border: 1px dashed var(--line); }
+
+/* Charts */
+.chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.chart .grid-l { stroke: var(--line); stroke-width: 1; }
+.chart text { fill: var(--muted); font-size: 11px; font-family: var(--font-body); font-variant-numeric: tabular-nums; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+.legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+footer { margin-top: 32px; color: var(--muted); font-size: 12px; }
+@media (prefers-reduced-motion: no-preference) { .card { transition: background .2s; } }
+.setup { flex: 1 1 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+@media (max-width: 760px) { .setup { grid-template-columns: minmax(0, 1fr); } }
+.setup label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.setup input { font: inherit; font-size: 16px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); min-width: 0; }
+.setup .actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.setup .help { grid-column: 1 / -1; margin: 0; }
+button[disabled] { opacity: .55; cursor: default; }
+</style>
+</head>
+<body style="margin:0">
+
+<div class="wrap">
+  <header class="hero" id="hero"></header>
+
+  <section class="source" id="source" aria-label="Snapshot file">
+    <p id="srcText" class="small"></p>
+    <button id="refreshBtn" hidden>Refresh</button>
+    <button class="ghost" id="setupBtn">Connect</button>
+    <form class="setup" id="setup" hidden autocomplete="off">
+      <label>Data repo<input id="cfgRepo" placeholder="ebygd/hyrox-data" autocapitalize="none" autocorrect="off" spellcheck="false"></label>
+      <label>Read-only access token<input id="cfgToken" type="password" placeholder="github_pat_…" autocomplete="off"></label>
+      <p class="help small muted">The token is kept in this browser only and is sent to GitHub and nowhere else. Use a fine-grained token limited to the data repo with Contents: Read-only. On a computer that isn't yours, use a private window.</p>
+      <div class="actions">
+        <button type="submit">Save and load</button>
+        <button type="button" class="ghost" id="forgetBtn" hidden>Disconnect this browser</button>
+        <label class="btn ghost-label" for="file" tabindex="0" id="fileLabel" style="background:transparent;color:var(--fg);border-color:var(--line)">Open a snapshot file instead</label>
+        <input type="file" id="file" accept=".json,application/json" hidden>
+        <button type="button" class="ghost" id="clearBtn" hidden>Show example</button>
+      </div>
+    </form>
+  </section>
+
+  <nav class="tabs" id="tabs" aria-label="Sections">
+    <a href="#today">Today</a><a href="#plan">Plan</a><a href="#log">Log</a><a href="#progress">Progress</a><a href="#lab">Lab &amp; stations</a>
+  </nav>
+
+  <main id="view"></main>
+  <footer>Read-only copy of the HYROX Prep app. The numbers come from your private GitHub repo and are kept in this browser; this page contains no data of its own.</footer>
+</div>
+
+<script>
+(() => {
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const STORE = "hyroxSnapshot", CFG = "hyroxSync";
+const FILE = "snapshot.json";
+let data = null, isExample = false, logFilter = "All";
+let cfg = null, loading = false, loadError = null, lastFetch = 0;
+
+// ---------- formatting ----------
+const D = (s) => new Date(s);
+const dayMs = 86400000;
+const fmtDate = (d, o = { weekday: "short", day: "numeric", month: "short" }) => D(d).toLocaleDateString("en-GB", o);
+const fmtDM = (d) => D(d).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+const fmtTime = (d) => D(d).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+const pace = (s) => { if (!s || !isFinite(s)) return "–"; s = Math.round(s); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
+const dur = (s) => { s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
+  return h ? `${h}:${String(m).padStart(2, "0")}:${String(x).padStart(2, "0")}` : `${m}:${String(x).padStart(2, "0")}`; };
+const hm = (h) => { if (h == null) return "–"; const m = Math.round(h * 60); return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m`; };
+const n0 = (v) => v == null ? "–" : String(Math.round(v));
+const n1 = (v) => v == null ? "–" : v.toFixed(1);
+const isoWeek = (d) => { d = new Date(D(d)); d.setHours(0,0,0,0); d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
+  const w1 = new Date(d.getFullYear(), 0, 4); return 1 + Math.round(((d - w1) / dayMs - 3 + (w1.getDay() + 6) % 7) / 7); };
+const sameDay = (a, b) => { a = D(a); b = D(b); return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); };
+const kindColor = (k) => ({ Run: "var(--k-run)", Strength: "var(--k-strength)", Conditioning: "var(--k-cond)", Row: "var(--k-row)", Bike: "var(--k-bike)" }[k] || "var(--k-other)");
+const zoneColor = (z) => `var(--z${Math.min(Math.max(z, 1), 5)})`;
+const levelCls = (l) => ({ Good: "good", Caution: "warn", Spike: "bad", Low: "warn" }[l] || "");
+
+// ---------- charts (plain SVG) ----------
+const W = 600;
+function scaleY(min, max, H, top = 10, bottom = 22) { return (v) => top + (H - top - bottom) * (1 - (v - min) / (max - min || 1)); }
+function niceRange(vals, padFrac = .12, includeZero = false) {
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  if (includeZero) lo = Math.min(0, lo);
+  if (lo === hi) { lo -= 1; hi += 1; }
+  const pad = (hi - lo) * padFrac; return [includeZero ? lo : lo - pad, hi + pad];
+}
+function ticks(lo, hi, n = 4) { const step = (hi - lo) / n; return Array.from({ length: n + 1 }, (_, i) => lo + step * i); }
+
+/** Lines over time. series: [{name, color, pts:[{d,v}], dots, dashed}] */
+function lineChart(series, { H = 190, yFmt = (v) => v.toFixed(0), invert = false, extraPts = [], w = W } = {}) {
+  const W_ = w;
+  const all = series.flatMap(s => s.pts).concat(extraPts);
+  if (all.length < 2) return `<div class="empty small">Not enough data yet.</div>`;
+  const xs = all.map(p => +D(p.d)); const x0 = Math.min(...xs), x1 = Math.max(...xs) || x0 + 1;
+  const L = 40, R = 12;
+  const X = (d) => L + (W_ - L - R) * ((+D(d) - x0) / ((x1 - x0) || 1));
+  let [lo, hi] = niceRange(all.map(p => p.v));
+  const Yraw = scaleY(lo, hi, H); const Y = invert ? (v) => Yraw(lo + hi - v) : Yraw;
+  let g = "";
+  for (const t of ticks(lo, hi)) g += `<line class="grid-l" x1="${L}" x2="${W_ - R}" y1="${Y(t)}" y2="${Y(t)}"/><text x="${L - 6}" y="${Y(t) + 4}" text-anchor="end">${yFmt(t)}</text>`;
+  for (let i = 0; i < 4; i++) { const t = x0 + (x1 - x0) * (i / 3); g += `<text x="${X(t)}" y="${H - 4}" text-anchor="${i === 0 ? "start" : i === 3 ? "end" : "middle"}">${fmtDM(t)}</text>`; }
+  for (const s of series) {
+    if (!s.pts.length) continue;
+    const p = [...s.pts].sort((a, b) => +D(a.d) - +D(b.d));
+    if (!s.dotsOnly && p.length > 1) g += `<path d="${p.map((q, i) => `${i ? "L" : "M"}${X(q.d).toFixed(1)},${Y(q.v).toFixed(1)}`).join("")}" style="fill:none;stroke:${s.color};stroke-width:2;${s.dashed ? "stroke-dasharray:4 4;" : ""}"/>`;
+    if (s.dots || s.dotsOnly) for (const q of p) g += `<circle cx="${X(q.d)}" cy="${Y(q.v)}" r="${s.dotsOnly ? 5 : 2.5}" style="fill:${s.color}"/>`;
+    const last = p[p.length - 1];
+    g += `<circle cx="${X(last.d)}" cy="${Y(last.v)}" r="4" style="fill:${s.color};stroke:var(--surface);stroke-width:2"/>`;
+  }
+  return `<div class="chart"><svg viewBox="0 0 ${W_} ${H}" role="img">${g}</svg></div>` + legend(series.filter(s => s.name));
+}
+
+/** Bars. bars: [{label, v, color, band:[lo,hi]}] */
+function barChart(bars, { H = 170, yFmt = (v) => v.toFixed(0), labelEvery = 1, max } = {}) {
+  if (!bars.length) return `<div class="empty small">No data yet.</div>`;
+  const L = 36, R = 6; const hi = max ?? Math.max(1, ...bars.map(b => Math.max(b.v, b.band ? b.band[1] : 0))) * 1.1;
+  const Y = scaleY(0, hi, H); const bw = (W - L - R) / bars.length;
+  let g = "";
+  for (const t of ticks(0, hi, 4)) g += `<line class="grid-l" x1="${L}" x2="${W - R}" y1="${Y(t)}" y2="${Y(t)}"/><text x="${L - 6}" y="${Y(t) + 4}" text-anchor="end">${yFmt(t)}</text>`;
+  bars.forEach((b, i) => {
+    const x = L + i * bw + bw * .15, w = bw * .7;
+    if (b.band) g += `<rect x="${L + i * bw + 1}" width="${bw - 2}" y="${Y(b.band[1])}" height="${Y(b.band[0]) - Y(b.band[1])}" rx="2" style="fill:var(--surface-2)"/>`;
+    g += `<rect x="${x}" width="${w}" y="${Y(b.v)}" height="${Math.max(0, Y(0) - Y(b.v))}" rx="2" style="fill:${b.color || "var(--accent)"};${b.faded ? "opacity:.45" : ""}"><title>${esc(b.label)}: ${yFmt(b.v)}</title></rect>`;
+    if (i % labelEvery === 0 || i === bars.length - 1) g += `<text x="${x + w / 2}" y="${H - 4}" text-anchor="middle">${esc(b.label)}</text>`;
+  });
+  return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img">${g}</svg></div>`;
+}
+
+/** Stacked bars. cols: [{label, parts:{key:value}}], keys: [{key,name,color}] */
+function stackChart(cols, keys, { H = 180, yFmt = (v) => v.toFixed(0), labelEvery = 1, line } = {}) {
+  if (!cols.length) return `<div class="empty small">No data yet.</div>`;
+  const L = 36, R = 6;
+  const tot = cols.map(c => keys.reduce((a, k) => a + (c.parts[k.key] || 0), 0));
+  const hi = Math.max(1, ...tot, ...(line ? cols.map(c => c.line || 0) : [])) * 1.1;
+  const Y = scaleY(0, hi, H); const bw = (W - L - R) / cols.length; let g = "";
+  for (const t of ticks(0, hi, 4)) g += `<line class="grid-l" x1="${L}" x2="${W - R}" y1="${Y(t)}" y2="${Y(t)}"/><text x="${L - 6}" y="${Y(t) + 4}" text-anchor="end">${yFmt(t)}</text>`;
+  cols.forEach((c, i) => {
+    const x = L + i * bw + bw * .15, w = bw * .7; let acc = 0;
+    for (const k of keys) { const v = c.parts[k.key] || 0; if (!v) continue;
+      g += `<rect x="${x}" width="${w}" y="${Y(acc + v)}" height="${Y(acc) - Y(acc + v)}" style="fill:${k.color}"><title>${esc(c.label)} · ${k.name}: ${yFmt(v)}</title></rect>`; acc += v; }
+    if (line && c.line) g += `<line x1="${x - 2}" x2="${x + w + 2}" y1="${Y(c.line)}" y2="${Y(c.line)}" style="stroke:var(--fg);stroke-width:2"/>`;
+    if (i % labelEvery === 0 || i === cols.length - 1) g += `<text x="${x + w / 2}" y="${H - 4}" text-anchor="middle">${esc(c.label)}</text>`;
+  });
+  return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img">${g}</svg></div>` + legend(keys.map(k => ({ name: k.name, color: k.color })).concat(line ? [{ name: line, color: "var(--fg)" }] : []));
+}
+function legend(items) { return items.length ? `<div class="legend">${items.map(i => `<span><i style="background:${i.color}"></i>${esc(i.name)}</span>`).join("")}</div>` : ""; }
+const tile = (k, v, d, cls = "") => `<div class="tile"><div class="k">${k}</div><div class="v ${cls}">${v}</div>${d ? `<div class="d">${d}</div>` : ""}</div>`;
+
+// ---------- header ----------
+function renderHero() {
+  const r = data.race; const total = Math.max(r.totalWeeks, 1);
+  let weeks = ""; for (let i = 0; i < r.totalWeeks; i++) weeks += `<i class="${i < r.currentWeek ? "done" : i === r.currentWeek ? "now" : ""}"></i>`;
+  const phases = r.phases.map(p => `<span class="${r.currentWeek >= p.firstWeek && r.currentWeek < p.firstWeek + p.weeks ? "cur" : ""}" style="flex:${p.weeks}">${esc(p.name)}</span>`).join("");
+  $("#hero").innerHTML = `
+    <div><div class="eyebrow">${esc(r.name)}</div>
+      <h1>${D(r.date).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</h1>
+      <div class="status">${esc(r.status || "")}</div></div>
+    <div class="count"><b class="num">${r.daysLeft}</b><span>days · ${Math.floor(r.daysLeft / 7)} weeks to go</span></div>
+    ${r.totalWeeks > 1 ? `<div class="weekbar" aria-label="${esc(r.status || "")}"><div class="weeks">${weeks}</div><div class="phases">${phases}</div></div>` : ""}`;
+  void total;
+}
+
+function renderSource() {
+  const age = (Date.now() - +D(data.exportedAt)) / 3600000;
+  const when = `${fmtDate(data.exportedAt)} at ${fmtTime(data.exportedAt)}`;
+  const stale = age > 36 ? ` <span class="pill warn"><span class="dot"></span>${Math.round(age / 24)} days old</span>` : "";
+  const err = loadError ? `<span class="pill bad"><span class="dot"></span>Couldn't update</span> ${esc(loadError)} ` : "";
+  let text;
+  if (isExample) {
+    text = `<span class="pill ex">Example data</span> ` + (cfg ? err || "Loading your data…"
+      : "These numbers are made up to show the layout. Connect this browser to your data repo to see your own.");
+  } else if (cfg) {
+    text = `${err}${loading ? "Updating… " : ""}Synced from the app <b>${when}</b>${stale}. Open the app on your phone to push newer numbers.`;
+  } else {
+    text = `${err}Snapshot file from <b>${when}</b>${stale}.`;
+  }
+  $("#srcText").innerHTML = text;
+  $("#refreshBtn").hidden = !cfg; $("#refreshBtn").disabled = loading;
+  $("#refreshBtn").textContent = loading ? "Updating…" : "Refresh";
+  $("#setupBtn").textContent = cfg ? "Settings" : "Connect";
+  $("#forgetBtn").hidden = !cfg;
+  $("#clearBtn").hidden = isExample || !!cfg;
+}
+
+// ---------- Today ----------
+function viewToday() {
+  const t = data.today, r = data.recovery, s = t.suggestion;
+  const warn = [...(t.activeAche ? [`<div class="warning ${t.activeAche.pain >= 4 ? "bad" : ""}">${esc(t.activeAche.area)}: ${t.activeAche.pain}/10 (${esc(t.activeAche.timing.toLowerCase())}). ${esc(t.acheAdvice || "")}</div>`] : []),
+    ...t.warnings.map(w => `<div class="warning">${esc(w)}</div>`), ...(data.volume.warning ? [`<div class="warning">${esc(data.volume.warning)}</div>`] : [])];
+  const planned = t.planned.length ? t.planned.map(p => `<div class="plan-item"><span><span class="chk ${p.doneAt ? "yes" : "no"}">${p.doneAt ? "✓" : "○"}</span> ${esc(p.session || p.label)}${p.notes ? `<div class="note">${esc(p.notes)}</div>` : ""}</span><span class="muted small">${p.doneAt ? fmtTime(p.doneAt) : esc(p.slot)}</span></div>`).join("")
+    : `<div class="empty small">Nothing planned today.</div>`;
+  const rec = r.whoopRecovery;
+  const recCls = rec ? (rec.v >= 67 ? "good" : rec.v >= 34 ? "warn" : "bad") : "";
+  const n = r.lastNight;
+  return `<div class="grid">
+    <section class="card lead">
+      <h3>Today's run · feeling ${esc(t.feeling.toLowerCase())}</h3>
+      <div><div class="sug-name">${esc(s.name)}</div><div class="muted small">${esc(s.intensity)} · ${esc(s.duration)}</div></div>
+      <div>${esc(s.structure)}</div>
+      <ul class="reasons small">${s.reasons.map(x => `<li>${esc(x)}</li>`).join("")}</ul>
+    </section>
+    <section class="card"><h3>Today's plan</h3><div>${planned}</div>
+      ${warn.length ? `<div class="warnings">${warn.join("")}</div>` : ""}</section>
+    <section class="card wide"><h3>Recovery</h3>
+      <div class="row">
+        ${tile("WHOOP recovery", rec ? `<span style="color:var(--${recCls})">${n0(rec.v)}%</span>` : "–", rec ? fmtDM(rec.d) : "not scored yet")}
+        ${tile("WHOOP HRV", r.whoopHRV != null ? `${n0(r.whoopHRV)} ms` : "–", r.whoopHRVBaseline != null ? `baseline ${n0(r.whoopHRVBaseline)}` : "")}
+        ${tile("WHOOP RHR", n0(r.whoopRHR), r.whoopRHRBaseline != null ? `baseline ${n0(r.whoopRHRBaseline)}` : "")}
+        ${tile("Watch HRV", r.hrv != null ? `${n0(r.hrv)} ms` : "–", r.hrvBaseline != null ? `baseline ${n0(r.hrvBaseline)}` : "")}
+        ${tile("Watch RHR", n0(r.rhr), r.rhrBaseline != null ? `baseline ${n0(r.rhrBaseline)}` : "")}
+        ${tile("Sleep", n ? hm(n.asleep) : "–", n ? `${n.need ? `of ${hm(n.need)} needed` : ""}${n.performance ? ` · ${n0(n.performance)}%` : ""}` : "")}
+      </div></section>
+    ${loadCard()}
+    ${volumeCard()}
+    ${zonesCard()}
+  </div>`;
+}
+
+function loadCard() {
+  const l = data.load;
+  const gauge = (ratio) => {
+    const pos = Math.min(Math.max((ratio - .4) / 1.4, 0), 1) * 100; // 0.4 → 1.8
+    const seg = (a, b, c) => `<span style="width:${(b - a) / 1.4 * 100}%;background:${c}"></span>`;
+    return `<div class="gauge">${seg(.4, .8, "var(--z1)")}${seg(.8, 1.3, "var(--good)")}${seg(1.3, 1.5, "var(--warn)")}${seg(1.5, 1.8, "var(--bad)")}</div><div class="gauge-marker"><b style="left:${pos}%"></b></div>`;
+  };
+  const block = (title, ratio, level, a, c, unit) => `<div><div class="row" style="justify-content:space-between"><b>${title}</b><span class="pill ${levelCls(level)}"><span class="dot"></span>${ratio != null ? ratio.toFixed(2) + " · " : ""}${esc(level)}</span></div>
+    ${ratio != null ? gauge(ratio) : `<div class="muted small">Building base: not enough history for a ratio yet.</div>`}
+    <div class="muted small">Last 7 days ${a.toFixed(unit === "km" ? 1 : 0)} ${unit} vs ${c.toFixed(unit === "km" ? 1 : 0)} ${unit} average week (28 days)</div></div>`;
+  return `<section class="card"><h3>Acute : chronic load</h3>
+    ${block("Running", l.kmRatio, l.runLevel, l.acuteKm, l.chronicKm, "km")}
+    ${block("All training", l.minRatio, l.totalLevel, l.acuteMin, l.chronicMin, "min")}
+    <div class="muted small">0.8–1.3 is the sweet spot. Above 1.5 is a spike.</div></section>`;
+}
+
+function volumeCard() {
+  const v = data.volume;
+  const bars = v.weeks.map((w, i) => ({ label: `W${isoWeek(w.week)}`, v: w.value, faded: i === v.weeks.length - 1 }));
+  return `<section class="card"><h3>Running volume</h3>
+    <div class="row">${tile("Last 7 days", `${n1(v.last7)} km`, `prev. 7 days ${n1(v.prior7)} km`)}${tile("Cap this week", v.suggestedCap ? `${n1(v.suggestedCap)} km` : "–", "last week + 10%")}</div>
+    <div class="row">${tile("Runs", v.runsThisWeek, "this week")}${tile("Strength", v.strengthThisWeek, "this week")}${tile("Conditioning", v.conditioningThisWeek, "this week")}</div>
+    ${barChart(bars, { yFmt: (x) => x.toFixed(0), labelEvery: 2 })}
+    <div class="muted small">km per week, last 12 weeks. The pale bar is this week so far.</div></section>`;
+}
+
+function zonesCard() {
+  const z = data.zones; const top = z.maxHR || z.uppers[3] + 10; const bottom = z.uppers[0] - (z.uppers[1] - z.uppers[0]);
+  const edges = [bottom, ...z.uppers, top];
+  const bar = z.names.map((nm, i) => `<div style="flex:${Math.max(edges[i + 1] - edges[i], 1)};background:${zoneColor(i + 1)}">${nm}</div>`).join("");
+  return `<section class="card wide"><h3>Heart rate zones</h3><div class="zbar">${bar}</div>
+    <div class="tscroll"><table class="ztable num"><tbody>${z.names.map((nm, i) => `<tr><td><span class="zchip" style="background:${zoneColor(i + 1)}">${nm}</span></td><td>${esc(z.labels[i])}</td><td class="r" style="text-align:right">${esc(z.ranges[i])} bpm</td></tr>`).join("")}</tbody></table></div>
+    <div class="muted small">From ${esc(z.source)}.${z.lt1HR ? ` LT1 ${z.lt1HR} bpm.` : ""}${z.lt2HR ? ` LT2 ${z.lt2HR} bpm` : ""}${z.lt2SpeedKmh ? ` at ${n1(z.lt2SpeedKmh)} km/h (${pace(3600 / z.lt2SpeedKmh)}/km).` : ""}</div></section>`;
+}
+
+// ---------- Plan ----------
+function viewPlan() {
+  if (!data.plan.length) return `<div class="empty">No planned sessions in this period.</div>`;
+  const byWeek = new Map();
+  for (const d of data.plan) { const ds = D(d.day); const mon = new Date(ds); mon.setDate(ds.getDate() - (ds.getDay() + 6) % 7); mon.setHours(0,0,0,0);
+    const k = +mon; if (!byWeek.has(k)) byWeek.set(k, new Map()); byWeek.get(k).set(ds.getDay(), d); }
+  const now = new Date(); now.setHours(0,0,0,0);
+  let out = "";
+  for (const [mon, days] of byWeek) {
+    let cells = "";
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(mon + i * dayMs); const d = days.get(date.getDay());
+      const past = date < now;
+      const items = d ? d.items.map(p => `<div class="ps ${p.doneAt ? "done" : past && p.type !== "rest" ? "missed" : ""} ${p.isHard ? "hard" : ""}" title="${esc(p.slot)}">${p.doneAt ? "✓ " : ""}${esc(p.session || p.label)}${p.notes ? `<div class="note">${esc(p.notes)}</div>` : ""}</div>`).join("")
+        + d.unplanned.map(u => `<div class="ps extra">+ ${esc(u)}</div>`).join("") : "";
+      cells += `<div class="day ${sameDay(date, now) ? "today" : ""}"><div class="dl">${date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric" })}</div>${items || `<span class="muted small">–</span>`}</div>`;
+    }
+    const end = new Date(mon + 6 * dayMs);
+    out += `<section class="week"><h3>Week ${isoWeek(mon)} · ${fmtDM(mon)} – ${fmtDM(end)}</h3><div class="days">${cells}</div></section>`;
+  }
+  return `<div style="display:flex;flex-direction:column;gap:18px">${out}
+    <div class="legend"><span><i style="background:color-mix(in srgb, var(--good) 40%, var(--surface))"></i>Done (matched to a Watch workout)</span><span><i style="background:var(--z4)"></i>Hard session</span><span><i style="border:1px dashed var(--line)"></i>Not in the plan</span></div></div>`;
+}
+
+// ---------- Log ----------
+function viewLog() {
+  const kinds = ["All", ...new Set(data.workouts.map(w => w.kind))];
+  const list = data.workouts.filter(w => logFilter === "All" || w.kind === logFilter);
+  const rows = list.map(w => `<tr>
+      <td class="num">${fmtDate(w.start)}<div class="note">${fmtTime(w.start)}</div></td>
+      <td><span class="kind"><span class="dot" style="color:${kindColor(w.kind)}"></span>${esc(w.session || w.activity)}</span>${w.session ? `<div class="note">${esc(w.activity)}${w.isIndoor ? " · indoor" : ""}</div>` : w.isIndoor ? `<div class="note">indoor</div>` : ""}${w.notes ? `<div class="note">${esc(w.notes)}</div>` : ""}</td>
+      <td class="r">${dur(w.durationSec)}</td>
+      <td class="r">${w.distanceM > 200 ? (w.distanceM / 1000).toFixed(2) + " km" : "–"}</td>
+      <td class="r">${w.paceSecPerKm ? pace(w.paceSecPerKm) + "/km" : "–"}</td>
+      <td class="r">${w.avgHR ? `${n0(w.avgHR)} <span class="zchip" style="background:${zoneColor(w.avgZone)}">Z${w.avgZone}</span>` : "–"}</td>
+      <td class="r">${w.maxHR ? n0(w.maxHR) : "–"}</td>
+      <td class="r">${w.rpe ?? "–"}</td></tr>`).join("");
+  const km = list.filter(w => w.kind === "Run").reduce((a, w) => a + w.distanceM, 0) / 1000;
+  const hours = list.reduce((a, w) => a + w.durationSec, 0) / 3600;
+  return `<section class="card">
+    <div class="row" style="justify-content:space-between;align-items:center"><div class="filters" role="group" aria-label="Filter">${kinds.map(k => `<button data-kind="${esc(k)}" class="${k === logFilter ? "on" : ""}">${esc(k)}</button>`).join("")}</div>
+      <span class="muted small num">${list.length} workouts · ${hours.toFixed(1)} h${km ? ` · ${km.toFixed(1)} km run` : ""}</span></div>
+    <div class="tscroll"><table class="list"><thead><tr><th>Date</th><th>Session</th><th class="r">Time</th><th class="r">Distance</th><th class="r">Pace</th><th class="r">Avg HR</th><th class="r">Max</th><th class="r">RPE</th></tr></thead><tbody>${rows || `<tr><td colspan="8" class="muted">No workouts.</td></tr>`}</tbody></table></div>
+    <div class="muted small">Last 180 days. Zone is for the average heart rate, from your current zones.</div></section>`;
+}
+
+// ---------- Progress ----------
+function weekLabel(d) { return `W${isoWeek(d)}`; }
+function viewProgress() {
+  const p = data.progress, s = data.recovery.series, r = data.recovery;
+  const eff = lineChart([
+    { name: "Each easy run", color: "var(--muted)", pts: p.efficiencyRuns, dotsOnly: true },
+    { name: "Weekly average", color: "var(--k-run)", pts: p.efficiencyWeekly.map(w => ({ d: w.week, v: w.value })), dots: true },
+  ], { invert: true, yFmt: pace, w: 1200, H: 240 });
+  const effChange = p.efficiencyWeekly.length >= 4 ? (() => { const v = p.efficiencyWeekly.map(w => w.value); const n = Math.min(3, Math.floor(v.length / 2));
+    const a = v.slice(0, n).reduce((x, y) => x + y, 0) / n, b = v.slice(-n).reduce((x, y) => x + y, 0) / n; const d = Math.round(a - b);
+    return d > 0 ? `${d} s/km faster than when you started.` : d < 0 ? `${-d} s/km slower than when you started.` : "No change yet."; })() : "";
+
+  const hrv = lineChart([{ name: "WHOOP (RMSSD)", color: "var(--accent-ink)", pts: s.whoopHRV }, { name: "Apple Watch (SDNN)", color: "var(--k-run)", pts: s.hrv }], { yFmt: (v) => v.toFixed(0) });
+  const rhr = lineChart([{ name: "WHOOP", color: "var(--accent-ink)", pts: s.whoopRHR }, { name: "Apple Watch", color: "var(--k-run)", pts: s.rhr }], { yFmt: (v) => v.toFixed(0) });
+  const recBars = s.whoopRecovery.slice(-30).map(x => ({ label: fmtDM(x.d), v: x.v, color: x.v >= 67 ? "var(--good)" : x.v >= 34 ? "var(--warn)" : "var(--bad)" }));
+  const sleeps = r.sleeps.slice(-21).map(x => ({ label: fmtDM(x.date), parts: { deep: x.deep, rem: x.rem, light: x.light, awake: x.awake }, line: x.need }));
+  const strain = r.strain.slice(-14).map(x => {
+    const inRange = x.expectedLow == null || (x.strain >= x.expectedLow && x.strain <= x.expectedHigh);
+    return { label: D(x.date).toLocaleDateString("en-GB", { weekday: "narrow" }), v: x.strain, band: x.expectedLow != null ? [x.expectedLow, x.expectedHigh] : null,
+      color: inRange ? "var(--k-run)" : x.strain > x.expectedHigh ? "var(--bad)" : "var(--warn)" };
+  });
+  const hours = p.weeklyHours.map((w, i) => ({ label: weekLabel(w.week), v: w.value, faded: i === p.weeklyHours.length - 1 }));
+  const types = [...new Set(p.minutesByType.map(m => m.type))];
+  const weeksM = [...new Set(p.minutesByType.map(m => m.week))].sort();
+  const mix = weeksM.map(w => ({ label: weekLabel(w), parts: Object.fromEntries(p.minutesByType.filter(m => m.week === w).map(m => [m.type, m.minutes / 60])) }));
+  const labVO2 = data.labTests.filter(t => t.vo2max).map(t => ({ d: t.date, v: t.vo2max }));
+  const vo2 = lineChart([{ name: "Watch estimate", color: "var(--muted)", pts: s.vo2Watch, dashed: true }, { name: "Lab test", color: "var(--bad)", pts: labVO2, dotsOnly: true }], { yFmt: (v) => v.toFixed(1) });
+
+  return `<div class="grid">
+    <section class="card wide"><h3>Easy pace at ${n0(p.referenceHR)} bpm</h3>${eff}
+      <div class="muted small">Estimated pace at the top of your easy zone, from each easy or steady run (speed ÷ heart rate). Higher on the chart is faster. ${effChange}</div></section>
+    <section class="card"><h3>HRV</h3>${hrv}<div class="muted small">WHOOP and the Watch measure HRV differently, so compare each line with itself.</div></section>
+    <section class="card"><h3>Resting heart rate</h3>${rhr}</section>
+    <section class="card"><h3>WHOOP recovery</h3>${barChart(recBars, { max: 100, labelEvery: 6 })}<div class="muted small">Last 30 days. Green 67%+, yellow 34–66%, red below 34%.</div></section>
+    <section class="card"><h3>Sleep</h3>${stackChart(sleeps, [{ key: "deep", name: "Deep", color: "var(--s-deep)" }, { key: "rem", name: "REM", color: "var(--s-rem)" }, { key: "light", name: "Light", color: "var(--s-light)" }, { key: "awake", name: "Awake", color: "var(--s-awake)" }], { yFmt: (v) => v.toFixed(0) + "h", labelEvery: 5, line: "Sleep need" })}</section>
+    <section class="card"><h3>Strain vs plan</h3>${barChart(strain, { max: 21 })}<div class="muted small">Last 14 days. The grey band is the strain you'd expect for what was planned that day. Red is above it, orange below.</div></section>
+    <section class="card"><h3>Training hours per week</h3>${barChart(hours, { yFmt: (v) => v.toFixed(0) + "h", labelEvery: 2 })}<div class="muted small">The pale bar is this week so far.</div></section>
+    <section class="card"><h3>Training mix</h3>${stackChart(mix, types.map(t => ({ key: t, name: t, color: kindColor(t) })), { yFmt: (v) => v.toFixed(0) + "h", labelEvery: 2 })}</section>
+    <section class="card"><h3>VO₂max</h3>${vo2}<div class="muted small">The Watch line shows the trend between lab tests; the lab value is the real one.</div></section>
+    <section class="card"><h3>HR recovery (1 min)</h3>${lineChart([{ name: "", color: "var(--good)", pts: s.hrRecovery, dots: true }])}<div class="muted small">Heart rate drop one minute after a workout. Higher is better.</div></section>
+    <section class="card"><h3>Body weight</h3>${lineChart([{ name: "", color: "var(--fg)", pts: s.weight, dots: true }], { yFmt: (v) => v.toFixed(1) })}</section>
+  </div>`;
+}
+
+// ---------- Lab & stations ----------
+function viewLab() {
+  const labs = data.labTests;
+  const labCards = labs.length ? labs.map((t, i) => {
+    const steps = t.steps.filter(x => x.speedKmh > 0);
+    const curve = steps.length >= 2 ? (() => {
+      const H = 200, L = 40, R = 40; const sp = steps.map(x => x.speedKmh); const x0 = Math.min(...sp), x1 = Math.max(...sp);
+      const X = (v) => L + (W - L - R) * (v - x0) / ((x1 - x0) || 1);
+      const [la0, la1] = niceRange(steps.map(x => x.lactate), .1, true); const YL = scaleY(la0, la1, H);
+      const [h0, h1] = niceRange(steps.map(x => x.hr)); const YH = scaleY(h0, h1, H);
+      let g = "";
+      for (const tk of ticks(la0, la1)) g += `<line class="grid-l" x1="${L}" x2="${W - R}" y1="${YL(tk)}" y2="${YL(tk)}"/><text x="${L - 6}" y="${YL(tk) + 4}" text-anchor="end">${tk.toFixed(1)}</text>`;
+      for (const tk of ticks(h0, h1)) g += `<text x="${W - R + 6}" y="${YH(tk) + 4}">${tk.toFixed(0)}</text>`;
+      for (const v of sp) g += `<text x="${X(v)}" y="${H - 4}" text-anchor="middle">${v.toFixed(1)}</text>`;
+      if (t.lt2SpeedKmh) g += `<line x1="${X(t.lt2SpeedKmh)}" x2="${X(t.lt2SpeedKmh)}" y1="8" y2="${H - 22}" style="stroke:var(--z4);stroke-width:1.5;stroke-dasharray:3 3"/><text x="${X(t.lt2SpeedKmh) + 4}" y="18" style="fill:var(--z4)">LT2</text>`;
+      if (t.lt1SpeedKmh) g += `<line x1="${X(t.lt1SpeedKmh)}" x2="${X(t.lt1SpeedKmh)}" y1="8" y2="${H - 22}" style="stroke:var(--z2);stroke-width:1.5;stroke-dasharray:3 3"/><text x="${X(t.lt1SpeedKmh) + 4}" y="18" style="fill:var(--z2)">LT1</text>`;
+      g += `<path d="${steps.map((x, j) => `${j ? "L" : "M"}${X(x.speedKmh)},${YH(x.hr)}`).join("")}" style="fill:none;stroke:var(--muted);stroke-width:1.5"/>`;
+      g += `<path d="${steps.map((x, j) => `${j ? "L" : "M"}${X(x.speedKmh)},${YL(x.lactate)}`).join("")}" style="fill:none;stroke:var(--bad);stroke-width:2.5"/>`;
+      for (const x of steps) g += `<circle cx="${X(x.speedKmh)}" cy="${YL(x.lactate)}" r="3.5" style="fill:var(--bad)"/>`;
+      return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img">${g}</svg></div>${legend([{ name: "Lactate (mmol/L, left)", color: "var(--bad)" }, { name: "Heart rate (right)", color: "var(--muted)" }])}<div class="muted small">km/h along the bottom.</div>`;
+    })() : "";
+    return `<section class="card ${i === 0 ? "lead wide" : ""}"><h3>${i === 0 ? "Latest lab test" : "Lab test"} · ${fmtDate(t.date, { day: "numeric", month: "long", year: "numeric" })}${t.location ? ` · ${esc(t.location)}` : ""}</h3>
+      <div class="row">${tile("VO₂max", n1(t.vo2max), "ml/kg/min")}${tile("Max HR", n0(t.maxHR), t.maxSpeedKmh ? `${n1(t.maxSpeedKmh)} km/h max` : "")}
+        ${tile("LT2", t.lt2SpeedKmh ? `${n1(t.lt2SpeedKmh)} km/h` : "–", [t.lt2SpeedKmh ? pace(3600 / t.lt2SpeedKmh) + "/km" : "", t.lt2HR ? t.lt2HR + " bpm" : "", t.lt2Lactate ? t.lt2Lactate + " mmol" : ""].filter(Boolean).join(" · "))}
+        ${tile("LT1", t.lt1SpeedKmh ? `${n1(t.lt1SpeedKmh)} km/h` : "–", [t.lt1HR ? t.lt1HR + " bpm" : "", t.lt1Lactate ? t.lt1Lactate + " mmol" : ""].filter(Boolean).join(" · "))}
+        ${tile("Weight", t.weightKg ? `${n1(t.weightKg)} kg` : "–", t.vo2AtThreshold ? `VO₂ at LT2 ${n1(t.vo2AtThreshold)}` : "")}</div>
+      ${curve}${t.notes ? `<div class="muted small">${esc(t.notes)}</div>` : ""}</section>`;
+  }).join("") : `<section class="card wide"><div class="empty">No lab tests entered yet.</div></section>`;
+
+  const st = data.stations;
+  const best = new Map();
+  for (const x of st) if (x.isFullPro && (!best.has(x.station) || x.seconds < best.get(x.station).seconds)) best.set(x.station, x);
+  const bestRows = [...best.values()].map(x => `<tr><td>${esc(x.name)}</td><td class="r">${dur(x.seconds)}</td><td class="r">${fmtDate(x.date)}</td></tr>`).join("");
+  const rows = st.map(x => `<tr><td class="num">${fmtDate(x.date)}</td><td>${esc(x.name)}${x.isRaceSim ? ` <span class="pill">race sim</span>` : ""}${x.notes ? `<div class="note">${esc(x.notes)}</div>` : ""}</td>
+    <td class="r">${dur(x.seconds)}</td><td class="r">${n0(x.amount)} ${esc(x.unit)}</td><td class="r">${x.weightKg ? n1(x.weightKg) + " kg" : "–"}</td><td class="r">${x.rpe ?? "–"}</td><td class="r">${x.isFullPro ? "Pro" : "–"}</td></tr>`).join("");
+  return `<div class="grid">${labCards}
+    <section class="card"><h3>Station bests (full Pro standard)</h3>${bestRows ? `<div class="tscroll"><table class="list"><tbody>${bestRows}</tbody></table></div>` : `<div class="empty small">No full-standard efforts logged yet.</div>`}</section>
+    <section class="card wide"><h3>Station log</h3>${rows ? `<div class="tscroll"><table class="list"><thead><tr><th>Date</th><th>Station</th><th class="r">Time</th><th class="r">Amount</th><th class="r">Weight</th><th class="r">RPE</th><th class="r">Std</th></tr></thead><tbody>${rows}</tbody></table></div>` : `<div class="empty small">No station efforts logged yet.</div>`}</section>
+    ${data.niggles.length ? `<section class="card wide"><h3>Aches & pain (90 days)</h3><div class="tscroll"><table class="list"><tbody>${data.niggles.map(n => `<tr><td class="num">${fmtDate(n.date)}</td><td>${esc(n.area)}${n.notes ? `<div class="note">${esc(n.notes)}</div>` : ""}</td><td>${esc(n.timing)}</td><td class="r"><b style="color:${n.pain >= 4 ? "var(--bad)" : n.pain > 0 ? "var(--warn)" : "var(--good)"}">${n.pain}/10</b></td></tr>`).join("")}</tbody></table></div></section>` : ""}
+  </div>`;
+}
+
+// ---------- routing ----------
+const views = { today: viewToday, plan: viewPlan, log: viewLog, progress: viewProgress, lab: viewLab };
+function current() { const h = location.hash.slice(1); return views[h] ? h : "today"; }
+function render() {
+  if (!data) return;
+  renderHero(); renderSource();
+  const v = current();
+  document.querySelectorAll("#tabs a").forEach(a => a.classList.toggle("on", a.getAttribute("href") === "#" + v));
+  try { $("#view").innerHTML = views[v](); }
+  catch (e) { $("#view").innerHTML = `<div class="empty">This part of the snapshot couldn't be shown (${esc(e.message)}). Update the app and export a new snapshot.</div>`; console.error(e); }
+  document.querySelectorAll(".filters button").forEach(b => b.addEventListener("click", () => { logFilter = b.dataset.kind; render(); }));
+}
+window.addEventListener("hashchange", render);
+
+// ---------- loading ----------
+function validate(obj) {
+  if (!obj || typeof obj !== "object" || !obj.race || !obj.today || !Array.isArray(obj.workouts)) throw new Error("This isn't a HYROX Prep web snapshot.");
+  return obj;
+}
+function use(obj, example = false) { data = validate(obj); isExample = example; if (!example) loadError = null; render(); }
+function loadText(text) {
+  try { use(JSON.parse(text)); try { localStorage.setItem(STORE, text); } catch {} }
+  catch (e) { $("#srcText").innerHTML = `<span class="pill bad"><span class="dot"></span>Couldn't open the file</span> ${esc(e.message)}`; }
+}
+
+// ---------- GitHub (the app uploads snapshot.json to a private repo; this reads it) ----------
+function readCfg() { try { const c = JSON.parse(localStorage.getItem(CFG) || "null"); return c && c.repo && c.token ? c : null; } catch { return null; } }
+function cleanRepo(v) { return v.trim().replace(/^https?:\/\/github\.com\//i, "").replace(/^github\.com\//i, "").replace(/\.git$/, "").replace(/^\/+|\/+$/g, ""); }
+async function fetchSnapshot() {
+  if (!cfg || loading) return;
+  loading = true; loadError = null; if (data) renderSource();
+  try {
+    const res = await fetch(`https://api.github.com/repos/${cfg.repo.split("/").map(encodeURIComponent).join("/")}/contents/${FILE}`, {
+      headers: { Authorization: `Bearer ${cfg.token}`, Accept: "application/vnd.github.raw+json", "X-GitHub-Api-Version": "2022-11-28" }, cache: "no-store" });
+    if (res.status === 401) throw new Error("GitHub rejected the access token. It may have expired; make a new one under Settings.");
+    if (res.status === 404) throw new Error("No snapshot found. Check the repo name and the token's access, and that the app has synced at least once.");
+    if (res.status === 403) throw new Error("GitHub refused the request (the token may lack Contents: Read-only, or too many requests). Try again in a minute.");
+    if (!res.ok) throw new Error(`GitHub answered ${res.status}.`);
+    const text = await res.text();
+    const obj = validate(JSON.parse(text));
+    lastFetch = Date.now(); loading = false;
+    use(obj); try { localStorage.setItem(STORE, text); } catch {}
+  } catch (e) {
+    loading = false;
+    loadError = e instanceof TypeError ? "No connection to GitHub. Showing the last numbers this browser has." : e.message;
+    if (data) renderSource();
+  }
+}
+$("#refreshBtn").addEventListener("click", fetchSnapshot);
+$("#setupBtn").addEventListener("click", () => { const f = $("#setup"); f.hidden = !f.hidden;
+  if (!f.hidden) { $("#cfgRepo").value = cfg?.repo || ""; $("#cfgToken").value = cfg?.token || ""; $("#cfgRepo").focus(); } });
+$("#setup").addEventListener("submit", (e) => { e.preventDefault();
+  const repo = cleanRepo($("#cfgRepo").value), token = $("#cfgToken").value.trim();
+  if (!/^[^\/\s]+\/[^\/\s]+$/.test(repo) || !token) { loadError = "Enter the repo as owner/name and paste the token."; renderSource(); return; }
+  cfg = { repo, token }; try { localStorage.setItem(CFG, JSON.stringify(cfg)); } catch {}
+  $("#setup").hidden = true; fetchSnapshot(); });
+$("#forgetBtn").addEventListener("click", () => { try { localStorage.removeItem(CFG); localStorage.removeItem(STORE); } catch {}
+  cfg = null; loadError = null; $("#setup").hidden = true; use(sample(), true); });
+document.addEventListener("visibilitychange", () => { if (!document.hidden && cfg && Date.now() - lastFetch > 5 * 60000) fetchSnapshot(); });
+$("#file").addEventListener("change", (e) => { const f = e.target.files[0]; if (!f) return; f.text().then(loadText); e.target.value = ""; });
+$("#fileLabel").addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("#file").click(); } });
+$("#clearBtn").addEventListener("click", () => { try { localStorage.removeItem(STORE); } catch {} use(sample(), true); });
+const src = $("#source");
+["dragenter", "dragover"].forEach(t => document.addEventListener(t, (e) => { e.preventDefault(); src.classList.add("drag"); }));
+["dragleave", "drop"].forEach(t => document.addEventListener(t, (e) => { e.preventDefault(); src.classList.remove("drag"); }));
+document.addEventListener("drop", (e) => { const f = e.dataTransfer?.files?.[0]; if (f) f.text().then(loadText); });
+
+// ---------- example data (made up, shown until you open your own file) ----------
+function sample() {
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const day = (o, h = 0, m = 0) => { const d = new Date(+today + o * dayMs); d.setHours(h, m); return d.toISOString(); };
+  const iso = (d) => new Date(d).toISOString();
+  const mondayOf = (d) => { const x = new Date(d); x.setDate(x.getDate() - (x.getDay() + 6) % 7); x.setHours(0,0,0,0); return x; };
+  const zU = [145, 162, 180, 188];
+  const zoneOf = (hr) => { const i = zU.findIndex(u => hr < u); return (i < 0 ? 4 : i) + 1; };
+  const workouts = []; const plan = [];
+  const weekPattern = [["Strength", 12, 50], ["Run", 18, 40, "Easy Zone 2 run"], ["Strength", 12, 55], null, ["Conditioning", 7, 60, "HYROX class"], ["Run", 10, 65, "Stokkavatnet long run"], ["Strength", 12, 50]];
+  for (let o = -70; o <= 0; o++) {
+    const d = new Date(+today + o * dayMs); const wd = (d.getDay() + 6) % 7; const p = weekPattern[wd];
+    if (!p || (o === 0 && p[1] > 10)) continue;
+    const prog = (o + 70) / 70; const [kind, hour, min, session] = p;
+    const dist = kind === "Run" ? (session?.includes("long") ? 9000 + prog * 4000 : 5500 + prog * 2000) : 0;
+    const paceS = kind === "Run" ? (session?.includes("long") ? 385 - prog * 18 : 375 - prog * 15) + rnd() * 10 : null;
+    const durS = kind === "Run" ? dist / 1000 * paceS : min * 60;
+    const avg = kind === "Run" ? 150 + rnd() * 9 : kind === "Conditioning" ? 158 + rnd() * 10 : 112 + rnd() * 10;
+    workouts.push({ id: "ex" + o, kind, activity: kind === "Run" ? "Running" : kind === "Strength" ? "Traditional Strength Training" : "High Intensity Interval Training",
+      start: day(o, hour, 5), durationSec: durS, distanceM: dist, kcal: durS / 60 * 11, avgHR: avg, maxHR: avg + 18, avgZone: zoneOf(avg), paceSecPerKm: paceS,
+      avgPowerW: null, isIndoor: false, source: kind === "Strength" ? "Strong" : "Apple Watch", session: session || null, rpe: kind === "Conditioning" ? 8 : null, notes: "" });
+  }
+  workouts.push({ id: "ex4x4", kind: "Run", activity: "Running", start: day(-6, 18, 10), durationSec: 2400, distanceM: 7600, kcal: 520, avgHR: 172, maxHR: 191, avgZone: 3, paceSecPerKm: 316,
+    avgPowerW: null, isIndoor: true, source: "Apple Watch", session: "Norwegian 4×4", rpe: 9, notes: "Example: treadmill 13 km/h, slight knee ache after" });
+  workouts.sort((a, b) => b.start.localeCompare(a.start));
+  const thisMon = mondayOf(today);
+  for (let o = Math.round((+mondayOf(new Date(+today - 14 * dayMs)) - +today) / dayMs); o <= 28; o++) {
+    const d = new Date(+today + o * dayMs); const wd = (d.getDay() + 6) % 7; const p = weekPattern[wd];
+    const items = p ? [{ type: p[0] === "Run" ? (p[3]?.includes("long") ? "longRun" : "easyRun") : p[0] === "Conditioning" ? "hyroxClass" : "strength", label: p[3] || p[0], slot: p[1] < 10 ? "Morning" : p[1] < 15 ? "Lunch" : "Evening",
+      session: p[0] === "Run" ? p[3] : null, notes: "", isHard: p[0] === "Conditioning", doneWorkoutID: null, doneAt: null }] : [{ type: "rest", label: "Rest", slot: "Anytime", session: null, notes: "", isHard: false, doneWorkoutID: null, doneAt: null }];
+    if (wd === 1) items.push({ type: "intervals", label: "Intervals", slot: "Evening", session: "Mosvatnet sub-threshold laps", notes: "", isHard: true, doneWorkoutID: null, doneAt: null });
+    const w = workouts.find(x => sameDay(x.start, d) && items[0].type !== "rest");
+    if (w) { items[0].doneAt = w.start; items[0].doneWorkoutID = w.id; }
+    plan.push({ day: iso(d), items, unplanned: [] });
+  }
+  const series = (base, amp, noise, days = 70, start = -69) => Array.from({ length: days }, (_, i) => ({ d: day(start + i), v: +(base + amp * (i / days) + (rnd() - .5) * noise).toFixed(1) }));
+  const whoopRec = series(58, 6, 40, 34, -33).map(p => ({ d: p.d, v: Math.max(15, Math.min(98, Math.round(p.v))) }));
+  const sleeps = Array.from({ length: 30 }, (_, i) => { const a = 6.4 + rnd() * 1.6; return { date: day(-29 + i, 7), asleep: a, deep: a * .2, rem: a * .23, light: a * .57, awake: .3 + rnd() * .4, need: 8.1 + rnd() * .5, performance: Math.round(a / 8.4 * 100) }; });
+  const strain = Array.from({ length: 14 }, (_, i) => { const d = new Date(+today + (-13 + i) * dayMs); const wd = (d.getDay() + 6) % 7;
+    const lvl = [[9, 15], [13, 21], [9, 15], [0, 10], [13, 21], [9, 15], [9, 15]][wd]; return { date: iso(d), strain: +(lvl[0] + rnd() * (lvl[1] - lvl[0] + 2)).toFixed(1), planned: "", expectedLow: lvl[0], expectedHigh: lvl[1] }; });
+  const weeks = []; for (let i = 11; i >= 0; i--) weeks.push(new Date(+thisMon - i * 7 * dayMs));
+  const runKm = weeks.map((w, i) => ({ week: iso(w), value: i < 2 ? 0 : +(8 + i * 1.6 + rnd() * 3).toFixed(1) })); runKm[11].value = 6.2;
+  const effRuns = workouts.filter(w => w.kind === "Run" && w.id !== "ex4x4").map(w => { const age = (+today - +D(w.start)) / dayMs; return { d: w.start, v: Math.round(352 + age * .4 + (rnd() - .5) * 14) }; });
+  const effW = weeks.slice(3).map(wk => { const rs = effRuns.filter(r => +D(r.d) >= +wk && +D(r.d) < +wk + 7 * dayMs); return rs.length ? { week: iso(wk), value: rs.reduce((a, r) => a + r.v, 0) / rs.length } : null; }).filter(Boolean);
+  const hours = weeks.slice(-16).map((w, i, a) => ({ week: iso(w), value: i === a.length - 1 ? 2.4 : 5 + rnd() * 2.5 }));
+  const mix = weeks.flatMap((w, i) => [["Run", 120 + i * 12], ["Strength", 170 - i * 4], ["Conditioning", 60]].map(([type, m]) => ({ week: iso(w), type, minutes: i === 11 ? m * .35 : m + rnd() * 20 })));
+  return {
+    schema: 1, exportedAt: new Date(Date.now() - 2 * 3600000).toISOString(),
+    race: { name: "HYROX Mechelen · Men's Pro", date: "2027-03-05T10:40:00Z", daysLeft: Math.round((+new Date("2027-03-05") - +today) / dayMs),
+      prepStart: "2026-11-02T00:00:00Z", totalWeeks: 18, currentWeek: Math.max(0, Math.floor((+today - +new Date("2026-11-02")) / (7 * dayMs))),
+      status: null, phases: [{ name: "Base", firstWeek: 0, weeks: 6 }, { name: "Build", firstWeek: 6, weeks: 6 }, { name: "Specific", firstWeek: 12, weeks: 4 }, { name: "Taper", firstWeek: 16, weeks: 2 }] },
+    today: { feeling: "Normal", warnings: ["WHOOP HRV is 17% below your 30-day baseline"],
+      suggestion: { id: "easy_z2", name: "Easy Zone 2 run", intensity: "Easy", duration: "35–50 min", structure: "Continuous easy running in Zone 2. Conversational pace; walk the hills if HR drifts above Z2.",
+        purpose: "Builds the aerobic base.", reasons: ["WHOOP HRV is 17% below your 30-day baseline", "Your body is still absorbing recent training. Keep it easy."] },
+      planned: plan.find(p => sameDay(p.day, today))?.items || [], activeAche: { date: day(-5), area: "Knee (right)", pain: 2, timing: "After training", notes: "" }, acheAdvice: "Acceptable (≤3/10). Train, but avoid downhills and hard intervals until it settles. If it's worse the next morning, back off." },
+    recovery: { rhr: 52, rhrBaseline: 51, hrv: 61, hrvBaseline: 64, vo2Watch: 53.1, whoopRecovery: whoopRec[whoopRec.length - 1], whoopRHR: 50, whoopRHRBaseline: 49, whoopHRV: 74, whoopHRVBaseline: 89,
+      lastNight: sleeps[sleeps.length - 1], sleeps, strain,
+      series: { rhr: series(54, -3, 3), hrv: series(58, 6, 14), whoopRHR: series(51, -2, 3, 34, -33), whoopHRV: series(84, 4, 22, 34, -33), whoopRecovery: whoopRec,
+        vo2Watch: series(51.5, 1.8, .8, 70, -69).filter((_, i) => i % 4 === 0), hrRecovery: series(28, 4, 8, 70, -69).filter((_, i) => i % 5 === 0), weight: series(87.2, -.8, .8, 70, -69).filter((_, i) => i % 3 === 0) } },
+    load: { acuteKm: 19.5, chronicKm: 17.2, kmRatio: 1.13, runLevel: "Good", acuteMin: 330, chronicMin: 305, minRatio: 1.08, totalLevel: "Good" },
+    volume: { last7: 19.5, prior7: 18.1, suggestedCap: 21.3, runsThisWeek: 2, strengthThisWeek: 1, conditioningThisWeek: 0, warning: null, weeks: runKm },
+    zones: { names: ["Z1", "Z2", "Z3", "Z4", "Z5"], labels: ["Recovery", "Easy", "Moderate", "Above threshold", "VO₂max"], ranges: ["<145", "145–162", "162–180", "180–188", "188–199"],
+      uppers: zU, maxHR: 199, source: "example zones", lt1HR: 162, lt2HR: 180, lt2SpeedKmh: 12.2 },
+    plan, workouts,
+    stations: [{ station: "wallBalls", name: "Wall Balls", date: day(-9), seconds: 352, amount: 100, unit: "reps", weightKg: 9, rpe: 8, isRaceSim: false, isFullPro: true, notes: "Example entry" },
+      { station: "sledPush", name: "Sled Push", date: day(-16), seconds: 205, amount: 50, unit: "m", weightKg: 202, rpe: 9, isRaceSim: false, isFullPro: true, notes: "" },
+      { station: "row", name: "Row", date: day(-16), seconds: 228, amount: 1000, unit: "m", weightKg: null, rpe: 7, isRaceSim: false, isFullPro: true, notes: "" }],
+    labTests: [{ date: day(-1, 9), location: "Example lab", vo2max: 55.5, maxHR: 199, maxSpeedKmh: 17, weightKg: 86.4, lt1HR: 162, lt1SpeedKmh: 10, lt1Lactate: 2.0, lt2HR: 180, lt2SpeedKmh: 12.2, lt2Lactate: 3.8, vo2AtThreshold: null, zoneUppers: zU,
+      steps: [[8, 138, 1.1], [9, 147, 1.3], [10, 158, 1.9], [11, 168, 2.6], [12, 178, 3.6], [13, 186, 5.4], [14, 193, 8.1]].map(([s, h, l]) => ({ speedKmh: s, hr: h, lactate: l })), notes: "" }],
+    niggles: [{ date: day(-5), area: "Knee (right)", pain: 2, timing: "After training", notes: "Example entry" }],
+    progress: { referenceHR: 162, efficiencyWeekly: effW, efficiencyRuns: effRuns, weeklyHours: hours, minutesByType: mix },
+  };
+}
+
+// ---------- start ----------
+let saved = null; try { saved = localStorage.getItem(STORE); } catch {}
+cfg = readCfg();
+if (saved) { try { use(JSON.parse(saved)); } catch { use(sample(), true); } } else use(sample(), true);
+if (cfg) fetchSnapshot();
+})();
+</script>
+</body>
+</html>
