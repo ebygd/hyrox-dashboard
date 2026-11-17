@@ -373,8 +373,6 @@ function viewToday() {
     ...t.warnings.map(w => `<div class="warning">${esc(w)}</div>`), ...(data.volume.warning ? [`<div class="warning">${esc(data.volume.warning)}</div>`] : [])];
   const planned = t.planned.length ? t.planned.map(p => `<div class="plan-item"><span><span class="chk ${p.doneAt ? "yes" : "no"}">${p.doneAt ? "✓" : "○"}</span> ${esc(p.session || p.label)}${p.notes ? `<div class="note">${esc(p.notes)}</div>` : ""}</span><span class="muted small">${p.doneAt ? fmtTime(p.doneAt) : esc(p.slot)}</span></div>`).join("")
     : `<div class="empty small">Nothing planned today.</div>`;
-  const rec = r.whoopRecovery;
-  const recCls = rec ? (rec.v >= 67 ? "good" : rec.v >= 34 ? "warn" : "bad") : "";
   const n = r.lastNight;
   return `<div class="grid">
     <section class="card lead">
@@ -388,12 +386,9 @@ function viewToday() {
     ${classesCard()}
     <section class="card wide"><h3>Recovery</h3>
       <div class="row">
-        ${tile("WHOOP recovery", rec ? `<span style="color:var(--${recCls})">${n0(rec.v)}%</span>` : "–", rec ? fmtDM(rec.d) : "not scored yet")}
-        ${tile("WHOOP HRV", r.whoopHRV != null ? `${n0(r.whoopHRV)} ms` : "–", r.whoopHRVBaseline != null ? `baseline ${n0(r.whoopHRVBaseline)}` : "")}
-        ${tile("WHOOP RHR", n0(r.whoopRHR), r.whoopRHRBaseline != null ? `baseline ${n0(r.whoopRHRBaseline)}` : "")}
-        ${tile("Watch HRV", r.hrv != null ? `${n0(r.hrv)} ms` : "–", r.hrvBaseline != null ? `baseline ${n0(r.hrvBaseline)}` : "")}
-        ${tile("Watch RHR", n0(r.rhr), r.rhrBaseline != null ? `baseline ${n0(r.rhrBaseline)}` : "")}
-        ${tile("Sleep", n ? hm(n.asleep) : "–", n ? `${n.need ? `of ${hm(n.need)} needed` : ""}${n.performance ? ` · ${n0(n.performance)}%` : ""}` : "")}
+        ${tile("HRV", r.hrv != null ? `${n0(r.hrv)} ms` : "–", r.hrvBaseline != null ? `baseline ${n0(r.hrvBaseline)}` : "")}
+        ${tile("Resting HR", n0(r.rhr), r.rhrBaseline != null ? `baseline ${n0(r.rhrBaseline)}` : "")}
+        ${tile("Sleep", n ? hm(n.asleep) : "–", n ? `deep ${hm(n.deep)}` : "")}
       </div></section>
     ${loadCard()}
     ${volumeCard()}
@@ -523,15 +518,9 @@ function viewProgress() {
     const a = v.slice(0, n).reduce((x, y) => x + y, 0) / n, b = v.slice(-n).reduce((x, y) => x + y, 0) / n; const d = Math.round(a - b);
     return d > 0 ? `${d} s/km faster than when you started.` : d < 0 ? `${-d} s/km slower than when you started.` : "No change yet."; })() : "";
 
-  const hrv = lineChart([{ name: "WHOOP (RMSSD)", color: "var(--accent-ink)", pts: s.whoopHRV }, { name: "Apple Watch (SDNN)", color: "var(--k-run)", pts: s.hrv }], { yFmt: (v) => v.toFixed(0) });
-  const rhr = lineChart([{ name: "WHOOP", color: "var(--accent-ink)", pts: s.whoopRHR }, { name: "Apple Watch", color: "var(--k-run)", pts: s.rhr }], { yFmt: (v) => v.toFixed(0) });
-  const recBars = s.whoopRecovery.slice(-30).map(x => ({ label: fmtDM(x.d), v: x.v, color: x.v >= 67 ? "var(--good)" : x.v >= 34 ? "var(--warn)" : "var(--bad)" }));
-  const sleeps = r.sleeps.slice(-21).map(x => ({ label: fmtDM(x.date), parts: { deep: x.deep, rem: x.rem, light: x.light, awake: x.awake }, line: x.need }));
-  const strain = r.strain.slice(-14).map(x => {
-    const inRange = x.expectedLow == null || (x.strain >= x.expectedLow && x.strain <= x.expectedHigh);
-    return { label: D(x.date).toLocaleDateString("en-GB", { weekday: "narrow" }), v: x.strain, band: x.expectedLow != null ? [x.expectedLow, x.expectedHigh] : null,
-      color: inRange ? "var(--k-run)" : x.strain > x.expectedHigh ? "var(--bad)" : "var(--warn)" };
-  });
+  const hrv = lineChart([{ name: "Apple Watch", color: "var(--k-run)", pts: s.hrv }], { yFmt: (v) => v.toFixed(0) });
+  const rhr = lineChart([{ name: "Apple Watch", color: "var(--k-run)", pts: s.rhr }], { yFmt: (v) => v.toFixed(0) });
+  const sleeps = r.sleeps.slice(-21).map(x => ({ label: fmtDM(x.date), parts: { deep: x.deep, rem: x.rem, light: x.light, awake: x.awake } }));
   const hours = p.weeklyHours.map((w, i) => ({ label: weekLabel(w.week), v: w.value, faded: i === p.weeklyHours.length - 1 }));
   const types = [...new Set(p.minutesByType.map(m => m.type))];
   const weeksM = [...new Set(p.minutesByType.map(m => m.week))].sort();
@@ -542,11 +531,9 @@ function viewProgress() {
   return `<div class="grid">
     <section class="card wide"><h3>Easy pace at ${n0(p.referenceHR)} bpm</h3>${eff}
       <div class="muted small">Estimated pace at the top of your easy zone, from each easy or steady run (speed ÷ heart rate). Higher on the chart is faster. ${effChange}</div></section>
-    <section class="card"><h3>HRV</h3>${hrv}<div class="muted small">WHOOP and the Watch measure HRV differently, so compare each line with itself.</div></section>
+    <section class="card"><h3>HRV</h3>${hrv}<div class="muted small">Rising over weeks means you're absorbing the training well.</div></section>
     <section class="card"><h3>Resting heart rate</h3>${rhr}</section>
-    <section class="card"><h3>WHOOP recovery</h3>${barChart(recBars, { max: 100, labelEvery: 6 })}<div class="muted small">Last 30 days. Green 67%+, yellow 34–66%, red below 34%.</div></section>
-    <section class="card"><h3>Sleep</h3>${stackChart(sleeps, [{ key: "deep", name: "Deep", color: "var(--s-deep)" }, { key: "rem", name: "REM", color: "var(--s-rem)" }, { key: "light", name: "Light", color: "var(--s-light)" }, { key: "awake", name: "Awake", color: "var(--s-awake)" }], { yFmt: (v) => v.toFixed(0) + "h", labelEvery: 5, line: "Sleep need" })}</section>
-    <section class="card"><h3>Strain vs plan</h3>${barChart(strain, { max: 21 })}<div class="muted small">Last 14 days. The grey band is the strain you'd expect for what was planned that day. Red is above it, orange below.</div></section>
+    <section class="card"><h3>Sleep</h3>${stackChart(sleeps, [{ key: "deep", name: "Deep", color: "var(--s-deep)" }, { key: "rem", name: "REM", color: "var(--s-rem)" }, { key: "light", name: "Core", color: "var(--s-light)" }, { key: "awake", name: "Awake", color: "var(--s-awake)" }], { yFmt: (v) => v.toFixed(0) + "h", labelEvery: 5 })}<div class="muted small">From the Apple Watch.</div></section>
     <section class="card"><h3>Training hours per week</h3>${barChart(hours, { yFmt: (v) => v.toFixed(0) + "h", labelEvery: 2 })}<div class="muted small">The pale bar is this week so far.</div></section>
     <section class="card"><h3>Training mix</h3>${stackChart(mix, types.map(t => ({ key: t, name: t, color: kindColor(t) })), { yFmt: (v) => v.toFixed(0) + "h", labelEvery: 2 })}</section>
     <section class="card"><h3>VO₂max</h3>${vo2}<div class="muted small">The Watch line shows the trend between lab tests; the lab value is the real one.</div></section>
@@ -703,10 +690,7 @@ function sample() {
     plan.push({ day: iso(d), items, unplanned: [] });
   }
   const series = (base, amp, noise, days = 70, start = -69) => Array.from({ length: days }, (_, i) => ({ d: day(start + i), v: +(base + amp * (i / days) + (rnd() - .5) * noise).toFixed(1) }));
-  const whoopRec = series(58, 6, 40, 34, -33).map(p => ({ d: p.d, v: Math.max(15, Math.min(98, Math.round(p.v))) }));
-  const sleeps = Array.from({ length: 30 }, (_, i) => { const a = 6.4 + rnd() * 1.6; return { date: day(-29 + i, 7), asleep: a, deep: a * .2, rem: a * .23, light: a * .57, awake: .3 + rnd() * .4, need: 8.1 + rnd() * .5, performance: Math.round(a / 8.4 * 100) }; });
-  const strain = Array.from({ length: 14 }, (_, i) => { const d = new Date(+today + (-13 + i) * dayMs); const wd = (d.getDay() + 6) % 7;
-    const lvl = [[9, 15], [13, 21], [9, 15], [0, 10], [13, 21], [9, 15], [9, 15]][wd]; return { date: iso(d), strain: +(lvl[0] + rnd() * (lvl[1] - lvl[0] + 2)).toFixed(1), planned: "", expectedLow: lvl[0], expectedHigh: lvl[1] }; });
+  const sleeps = Array.from({ length: 30 }, (_, i) => { const a = 6.4 + rnd() * 1.6; return { date: day(-29 + i, 7), asleep: a, deep: a * .2, rem: a * .23, light: a * .57, awake: .3 + rnd() * .4 }; });
   const weeks = []; for (let i = 11; i >= 0; i--) weeks.push(new Date(+thisMon - i * 7 * dayMs));
   const runKm = weeks.map((w, i) => ({ week: iso(w), value: i < 2 ? 0 : +(8 + i * 1.6 + rnd() * 3).toFixed(1) })); runKm[11].value = 6.2;
   const effRuns = workouts.filter(w => w.kind === "Run" && w.id !== "ex4x4").map(w => { const age = (+today - +D(w.start)) / dayMs; return { d: w.start, v: Math.round(352 + age * .4 + (rnd() - .5) * 14) }; });
@@ -714,17 +698,17 @@ function sample() {
   const hours = weeks.slice(-16).map((w, i, a) => ({ week: iso(w), value: i === a.length - 1 ? 2.4 : 5 + rnd() * 2.5 }));
   const mix = weeks.flatMap((w, i) => [["Run", 120 + i * 12], ["Strength", 170 - i * 4], ["Conditioning", 60]].map(([type, m]) => ({ week: iso(w), type, minutes: i === 11 ? m * .35 : m + rnd() * 20 })));
   return {
-    schema: 1, exportedAt: new Date(Date.now() - 2 * 3600000).toISOString(),
+    schema: 2, exportedAt: new Date(Date.now() - 2 * 3600000).toISOString(),
     race: { name: "HYROX Mechelen · Men's Pro", date: "2027-03-05T10:40:00Z", daysLeft: Math.round((+new Date("2027-03-05") - +today) / dayMs),
       prepStart: "2026-11-02T00:00:00Z", totalWeeks: 18, currentWeek: Math.max(0, Math.floor((+today - +new Date("2026-11-02")) / (7 * dayMs))),
       status: null, phases: [{ name: "Base", firstWeek: 0, weeks: 6 }, { name: "Build", firstWeek: 6, weeks: 6 }, { name: "Specific", firstWeek: 12, weeks: 4 }, { name: "Taper", firstWeek: 16, weeks: 2 }] },
-    today: { feeling: "Normal", warnings: ["WHOOP HRV is 17% below your 30-day baseline"],
+    today: { feeling: "Normal", warnings: ["HRV is 17% below your 30-day baseline"],
       suggestion: { id: "easy_z2", name: "Easy Zone 2 run", intensity: "Easy", duration: "35–50 min", structure: "Continuous easy running in Zone 2. Conversational pace; walk the hills if HR drifts above Z2.",
-        purpose: "Builds the aerobic base.", reasons: ["WHOOP HRV is 17% below your 30-day baseline", "Your body is still absorbing recent training. Keep it easy."] },
+        purpose: "Builds the aerobic base.", reasons: ["HRV is 17% below your 30-day baseline", "Your body is still absorbing recent training. Keep it easy."] },
       planned: plan.find(p => sameDay(p.day, today))?.items || [], activeAche: { date: day(-5), area: "Knee (right)", pain: 2, timing: "After training", notes: "" }, acheAdvice: "Acceptable (≤3/10). Train, but avoid downhills and hard intervals until it settles. If it's worse the next morning, back off." },
-    recovery: { rhr: 52, rhrBaseline: 51, hrv: 61, hrvBaseline: 64, vo2Watch: 53.1, whoopRecovery: whoopRec[whoopRec.length - 1], whoopRHR: 50, whoopRHRBaseline: 49, whoopHRV: 74, whoopHRVBaseline: 89,
-      lastNight: sleeps[sleeps.length - 1], sleeps, strain,
-      series: { rhr: series(54, -3, 3), hrv: series(58, 6, 14), whoopRHR: series(51, -2, 3, 34, -33), whoopHRV: series(84, 4, 22, 34, -33), whoopRecovery: whoopRec,
+    recovery: { rhr: 52, rhrBaseline: 51, hrv: 61, hrvBaseline: 64, vo2Watch: 53.1,
+      lastNight: sleeps[sleeps.length - 1], sleeps,
+      series: { rhr: series(54, -3, 3), hrv: series(58, 6, 14),
         vo2Watch: series(51.5, 1.8, .8, 70, -69).filter((_, i) => i % 4 === 0), hrRecovery: series(28, 4, 8, 70, -69).filter((_, i) => i % 5 === 0), weight: series(87.2, -.8, .8, 70, -69).filter((_, i) => i % 3 === 0) } },
     load: { acuteKm: 19.5, chronicKm: 17.2, kmRatio: 1.13, runLevel: "Good", acuteMin: 330, chronicMin: 305, minRatio: 1.08, totalLevel: "Good" },
     volume: { last7: 19.5, prior7: 18.1, suggestedCap: 21.3, runsThisWeek: 2, strengthThisWeek: 1, conditioningThisWeek: 0, warning: null, weeks: runKm },
