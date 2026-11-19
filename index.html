@@ -332,7 +332,8 @@ function renderHero() {
   $("#hero").innerHTML = `
     <div><div class="eyebrow">${esc(r.name)}</div>
       <h1>${D(r.date).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</h1>
-      <div class="status">${esc(r.status || "")}</div></div>
+      <div class="status">${esc(r.status || "")}</div>
+      ${r.next ? `<div class="status next">Next: ${esc(r.next.name)} · ${D(r.next.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} · ${r.next.daysLeft < 14 ? `${r.next.daysLeft} days` : `${Math.floor(r.next.daysLeft / 7)} weeks`}</div>` : ""}</div>
     <div class="count"><b class="num">${r.daysLeft}</b><span>days · ${Math.floor(r.daysLeft / 7)} weeks to go</span></div>
     ${r.totalWeeks > 1 ? `<div class="weekbar" aria-label="${esc(r.status || "")}"><div class="weeks">${weeks}</div><div class="phases">${phases}</div></div>` : ""}`;
   void total;
@@ -701,7 +702,8 @@ function sample() {
     schema: 2, exportedAt: new Date(Date.now() - 2 * 3600000).toISOString(),
     race: { name: "HYROX Mechelen · Men's Pro", date: "2027-03-05T10:40:00Z", daysLeft: Math.round((+new Date("2027-03-05") - +today) / dayMs),
       prepStart: "2026-11-02T00:00:00Z", totalWeeks: 18, currentWeek: Math.max(0, Math.floor((+today - +new Date("2026-11-02")) / (7 * dayMs))),
-      status: null, phases: [{ name: "Base", firstWeek: 0, weeks: 6 }, { name: "Build", firstWeek: 6, weeks: 6 }, { name: "Specific", firstWeek: 12, weeks: 4 }, { name: "Taper", firstWeek: 16, weeks: 2 }] },
+      status: null, phases: [{ name: "Base", firstWeek: 0, weeks: 6 }, { name: "Build", firstWeek: 6, weeks: 6 }, { name: "Specific", firstWeek: 12, weeks: 4 }, { name: "Taper", firstWeek: 16, weeks: 2 }],
+      next: { name: "HYROX Krakow · Men's Pro", date: "2027-05-07T10:00:00Z", daysLeft: Math.round((+new Date("2027-05-07") - +today) / dayMs) } },
     today: { feeling: "Normal", warnings: ["HRV is 17% below your 30-day baseline"],
       suggestion: { id: "easy_z2", name: "Easy Zone 2 run", intensity: "Easy", duration: "35–50 min", structure: "Continuous easy running in Zone 2. Conversational pace; walk the hills if HR drifts above Z2.",
         purpose: "Builds the aerobic base.", reasons: ["HRV is 17% below your 30-day baseline", "Your body is still absorbing recent training. Keep it easy."] },
